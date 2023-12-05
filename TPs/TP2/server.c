@@ -10,7 +10,6 @@ int main() {
     int err;
     struct addrinfo hints;
     struct addrinfo *res;
-    char* path = "/siteTest";
 
     memset(&hints, 0, sizeof(struct addrinfo));
 
@@ -18,7 +17,7 @@ int main() {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    err = getaddrinfo(NULL, "5002", &hints, &res);
+    err = getaddrinfo(NULL, "5023", &hints, &res);
     assert(err == 0);
 
     int sfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -27,7 +26,7 @@ int main() {
     err = bind(sfd, res->ai_addr, res->ai_addrlen);
     assert(err != -1);
 
-    listen(sfd, 5);
+    listen(sfd, 1);
 
     int c;
     char buf[1024];
@@ -40,10 +39,26 @@ int main() {
         buf[err] = '\0';
         printf("%s\n", buf);
 
-        char* params = strtok(buf, "\n");
+        char *p = strstr(buf, "/");
+        printf("%s\n", p);
+        char *q = strstr(p, " ");
+        if (q == NULL) {
+            exit(EXIT_FAILURE);
+        }
 
+        size_t size_file = q - p;
+        char filename[size_file + 1];
+        memcpy(filename, p, size_file);
+        filename[size_file] = '\0';
+        printf("%s\n", filename);
 
-        FILE *fichier = fopen("file.html", "r");
+        char filepath[1024];
+        filepath[0] = '\0';
+        strcat(filepath, "./siteTest");
+        strcat(filepath, filename);
+        printf("%s \n", filepath);
+
+        FILE *fichier = fopen(filepath, "r");
         if (fichier == NULL) {
             perror("Erreur lors de l'ouverture du fichier");
             exit(EXIT_FAILURE);
@@ -53,29 +68,21 @@ int main() {
         long size = ftell(fichier);
         rewind(fichier);
 
-        char entete[1024] = "\0";
-        sprintf(entete, "HTTP/1.1 200 OK\nContent-Length: %ld \n\n", size);
+        char buffer[1024];
+        sprintf(buffer, "HTTP/1.1 200 OK\nContent-Length: %ld \n\n", size);
+        send(c, buffer, strlen(buffer), 0);
 
-        char *contenu_fichier = (char *)malloc(size + 1);
-        if (contenu_fichier == NULL) {
-            perror("Erreur d'allocation de mémoire");
-            exit(EXIT_FAILURE);
+        int nbread;
+        while ((nbread = fread(buffer, 1, 1023, fichier)) > 0) {
+            //usleep(500000);
+            ssize_t sent_bytes = send(c, buffer, nbread, 0);
+            if (sent_bytes == -1) {
+                perror("Erreur lors de l'envoi des données");
+                break;
+            }
         }
-
-        fread(contenu_fichier, 1, size, fichier);
-        contenu_fichier[size] = '\0';
-
-        send(c, entete, strlen(entete), 0);
-
-        ssize_t sent_bytes = send(c, contenu_fichier, size, 0);
-        if (sent_bytes == -1) {
-            perror("Erreur lors de l'envoi des données");
-            exit(EXIT_FAILURE);
-        }
-
         fclose(fichier);
         close(c);
-
-        free(contenu_fichier);
     }
+    return 0;
 }
