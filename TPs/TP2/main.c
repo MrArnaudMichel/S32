@@ -4,6 +4,6 @@
 
 int main() {
     printf("Hello, World!\n");
-    serveur();
+    server();
     return 0;
 }

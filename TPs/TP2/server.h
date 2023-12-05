@@ -12,7 +12,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
-int serveur();
+int server();
 
 #endif //SERVER_H
